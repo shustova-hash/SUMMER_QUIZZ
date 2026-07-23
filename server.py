@@ -55,6 +55,7 @@ def init_db():
     
     defaults = {
         'branch_name': 'Ковельська філія',
+        'youtube_url': '',
         'phone': '+380 (67) 555-43-21',
         'email': 'kovel@itstep.org',
         'address': 'м. Ковель, вул. Незалежності, 1',
