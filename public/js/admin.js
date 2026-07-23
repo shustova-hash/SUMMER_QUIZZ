@@ -108,6 +108,37 @@ function setupAdminEvents() {
       filterLeadsTable(e.target.value.toLowerCase());
     });
   }
+
+  const tbody = document.getElementById('leads-tbody');
+  if (tbody) {
+    tbody.addEventListener('click', async (e) => {
+      const deleteBtn = e.target.closest('.btn-delete-lead');
+      if (deleteBtn) {
+        const leadId = deleteBtn.dataset.id;
+        const childName = deleteBtn.dataset.name || `#${leadId}`;
+        if (confirm(`Ви дійсно бажаєте видалити запис про учасника "${childName}" (ID #${leadId}) з бази даних?`)) {
+          try {
+            const res = await fetch('/api/admin/leads/delete', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${adminToken}`
+              },
+              body: JSON.stringify({ id: leadId })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              loadLeads();
+            } else {
+              alert(data.error || 'Помилка при видаленні запису');
+            }
+          } catch (err) {
+            alert('Помилка сервера при видаленні');
+          }
+        }
+      }
+    });
+  }
 }
 
 async function loadSettings() {
@@ -152,7 +183,7 @@ function renderLeadsTable(leads) {
   tbody.innerHTML = '';
 
   if (leads.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#94a3b8; padding:24px;">Заявок поки немає</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#94a3b8; padding:24px;">Заявок поки немає</td></tr>`;
     return;
   }
 
@@ -168,6 +199,11 @@ function renderLeadsTable(leads) {
       <td>${lead.parent_email}</td>
       <td><span class="ticket-tag">${lead.ticket_number}</span></td>
       <td><span style="color:#ffb703; font-weight:600;">${lead.result_profile}</span></td>
+      <td style="text-align: center;">
+        <button class="btn-delete-lead" data-id="${lead.id}" data-name="${lead.child_name}" title="Видалити запис" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; cursor: pointer; font-size: 0.95rem; padding: 6px 10px; border-radius: 6px; transition: all 0.2s;">
+          🗑️
+        </button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
