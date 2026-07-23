@@ -257,6 +257,36 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 self._send_error(str(e), 400)
             return
 
+        if path == '/api/admin/leads/delete' or (path == '/api/admin/leads' and self.command == 'DELETE'):
+            auth_header = self.headers.get('Authorization', '')
+            if auth_header != f'Bearer {ADMIN_PASSWORD}':
+                self._send_error('Unauthorized', 401)
+                return
+            try:
+                lead_id = None
+                if body:
+                    data = json.loads(body.decode('utf-8'))
+                    lead_id = data.get('id')
+                if not lead_id:
+                    query_params = urllib.parse.parse_qs(parsed_url.query)
+                    if 'id' in query_params:
+                        lead_id = query_params['id'][0]
+
+                if not lead_id:
+                    self._send_error('Не вказано ID запису для видалення', 400)
+                    return
+
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                c.execute('DELETE FROM leads WHERE id = ?', (lead_id,))
+                conn.commit()
+                conn.close()
+
+                self._send_json({'success': True, 'deleted_id': lead_id})
+            except Exception as e:
+                self._send_error(str(e), 400)
+            return
+
         if path == '/api/register':
             try:
                 data = json.loads(body.decode('utf-8'))
@@ -356,6 +386,9 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             else:
                 self._send_error('Помилка завантаження файла', 400)
             return
+
+    def do_DELETE(self):
+        self.do_POST()
 
 handler = QuizRequestHandler
 app = QuizRequestHandler
