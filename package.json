@@ -1,0 +1,16 @@
+{
+  "name": "quizz-summer-itstep",
+  "version": "1.0.0",
+  "description": "Сайт-воронка для IT-навчання ITSTEP «Мої літні канікули — це баг чи фіча?»",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "better-sqlite3": "^9.4.3",
+    "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1"
+  }
+}
