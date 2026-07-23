@@ -360,9 +360,10 @@ handler = QuizRequestHandler
 app = QuizRequestHandler
 
 def run(port=8080):
+    port = int(os.environ.get('PORT', port))
     server_address = ('', port)
     httpd = HTTPServer(server_address, QuizRequestHandler)
-    print(f"Сервер воронки продажів ITSTEP запущено на http://localhost:{port}")
+    print(f"Сервер воронки продажів ITSTEP запущено на порту {port}")
     httpd.serve_forever()
 
 if __name__ == '__main__':
