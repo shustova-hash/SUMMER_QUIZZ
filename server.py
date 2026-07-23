@@ -62,7 +62,7 @@ def init_db():
         'telegram': '@itstep_kovel'
     }
     for k, v in defaults.items():
-        c.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (k, v))
+        c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
     conn.commit()
     conn.close()
 
