@@ -1,47 +1,25 @@
 let adminToken = localStorage.getItem('admin_token') || '';
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (adminToken) {
-    showAdminDashboard();
-  } else {
-    showAuthForm();
+  if (!adminToken) {
+    window.location.href = '/login.html';
+    return;
   }
 
   setupAdminEvents();
+  loadSettings();
+  loadLeads();
+  loadUploadedFiles();
 });
 
 function setupAdminEvents() {
-  const loginForm = document.getElementById('admin-login-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const pwd = document.getElementById('admin-password').value;
-      try {
-        const res = await fetch('/api/admin/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: pwd })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          adminToken = data.token;
-          localStorage.setItem('admin_token', adminToken);
-          showAdminDashboard();
-        } else {
-          alert(data.error || 'Невірний пароль');
-        }
-      } catch (err) {
-        alert('Помилка авторизації');
-      }
-    });
-  }
-
   const settingsForm = document.getElementById('settings-form');
   if (settingsForm) {
     settingsForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const payload = {
         branch_name: document.getElementById('set_branch_name').value,
+        youtube_url: document.getElementById('set_youtube_url').value,
         phone: document.getElementById('set_phone').value,
         email: document.getElementById('set_email').value,
         address: document.getElementById('set_address').value,
@@ -117,8 +95,7 @@ function setupAdminEvents() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       localStorage.removeItem('admin_token');
-      adminToken = '';
-      showAuthForm();
+      window.location.href = '/login.html';
     });
   }
 
@@ -130,26 +107,13 @@ function setupAdminEvents() {
   }
 }
 
-function showAuthForm() {
-  document.getElementById('auth-section').classList.remove('hidden');
-  document.getElementById('dashboard-section').classList.add('hidden');
-}
-
-function showAdminDashboard() {
-  document.getElementById('auth-section').classList.add('hidden');
-  document.getElementById('dashboard-section').classList.remove('hidden');
-
-  loadSettings();
-  loadLeads();
-  loadUploadedFiles();
-}
-
 async function loadSettings() {
   try {
     const res = await fetch('/api/settings');
     if (res.ok) {
       const data = await res.json();
       document.getElementById('set_branch_name').value = data.branch_name || '';
+      document.getElementById('set_youtube_url').value = data.youtube_url || '';
       document.getElementById('set_phone').value = data.phone || '';
       document.getElementById('set_email').value = data.email || '';
       document.getElementById('set_address').value = data.address || '';
@@ -173,7 +137,7 @@ async function loadLeads() {
       renderLeadsTable(loadedLeads);
     } else if (res.status === 401) {
       localStorage.removeItem('admin_token');
-      showAuthForm();
+      window.location.href = '/login.html';
     }
   } catch (err) {
     console.error(err);
