@@ -19,7 +19,7 @@ PUBLIC_DIR = os.path.join(os.path.dirname(__file__), 'public')
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(PUBLIC_DIR, exist_ok=True)
 
-ADMIN_PASSWORD = "admin"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zVjp5vlB3ojS0uT")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
