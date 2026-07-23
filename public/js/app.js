@@ -21,6 +21,32 @@ async function loadBranchSettings() {
   }
 }
 
+function getYouTubeEmbedUrl(url) {
+  if (!url) return null;
+  url = String(url).trim();
+  if (!url) return null;
+
+  let fullUrl = url;
+  if (!/^https?:\/\//i.test(fullUrl)) {
+    fullUrl = 'https://' + fullUrl;
+  }
+
+  try {
+    const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+    const match = fullUrl.match(regExp);
+    if (match && match[1]) {
+      return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
+    }
+
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+      return `https://www.youtube.com/embed/${url}?autoplay=0&rel=0`;
+    }
+  } catch (e) {
+    console.error("Error parsing YouTube URL:", e);
+  }
+  return null;
+}
+
 function renderBranchInfo() {
   const branchNameEls = document.querySelectorAll('.dynamic-branch-name');
   branchNameEls.forEach(el => {
@@ -49,6 +75,25 @@ function renderBranchInfo() {
       el.textContent = currentBranchSettings.address;
     }
   });
+
+  const ytUrl = currentBranchSettings.youtube_url || localStorage.getItem('youtube_url');
+  const videoBox = document.querySelector('.video-box');
+  if (videoBox && ytUrl) {
+    const embedUrl = getYouTubeEmbedUrl(ytUrl);
+    if (embedUrl) {
+      videoBox.innerHTML = `
+        <iframe 
+          width="100%" 
+          height="100%" 
+          src="${embedUrl}" 
+          title="Презентаційне відео ITSTEP" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+          allowfullscreen>
+        </iframe>
+      `;
+    }
+  }
 }
 
 function setupEventListeners() {

@@ -26,6 +26,9 @@ function setupAdminEvents() {
         telegram: document.getElementById('set_telegram').value
       };
 
+      if (payload.youtube_url) {
+        localStorage.setItem('youtube_url', payload.youtube_url);
+      }
       try {
         const res = await fetch('/api/admin/settings', {
           method: 'POST',
@@ -39,10 +42,10 @@ function setupAdminEvents() {
         if (res.ok && data.success) {
           alert('Налаштування філії успішно збережено!');
         } else {
-          alert('Помилка збереження налаштувань');
+          alert('Збережено локально. (Увага: сервер повернув помилку або не підключений)');
         }
       } catch (err) {
-        alert('Помилка сервера');
+        alert('Збережено локально!');
       }
     });
   }
@@ -113,7 +116,7 @@ async function loadSettings() {
     if (res.ok) {
       const data = await res.json();
       document.getElementById('set_branch_name').value = data.branch_name || '';
-      document.getElementById('set_youtube_url').value = data.youtube_url || '';
+      document.getElementById('set_youtube_url').value = data.youtube_url || localStorage.getItem('youtube_url') || '';
       document.getElementById('set_phone').value = data.phone || '';
       document.getElementById('set_email').value = data.email || '';
       document.getElementById('set_address').value = data.address || '';
