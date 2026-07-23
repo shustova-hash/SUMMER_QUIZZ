@@ -15,27 +15,14 @@
       <img src="assets/logo.jpg" alt="ITSTEP">
       <h1>Адмінпанель ITSTEP — Воронка продажів</h1>
     </div>
-    <div id="admin-user-bar" class="hidden">
+    <div id="admin-user-bar">
       <a href="/" target="_blank" style="color: #38bdf8; text-decoration: none; margin-right: 20px; font-weight: 600;">🌐 Переглянути сайт</a>
       <button id="admin-logout-btn" class="btn-admin" style="background: #ef4444;">Вийти</button>
     </div>
   </header>
 
-  <!-- Auth Section -->
-  <div id="auth-section" class="auth-container">
-    <h2 style="margin-bottom: 16px; text-align: center; color: #38bdf8;">Вхід у панель управління</h2>
-    <p style="font-size: 0.85rem; color: #94a3b8; text-align: center; margin-bottom: 24px;">Введіть пароль адміністратора для доступу</p>
-    <form id="admin-login-form">
-      <div class="form-field">
-        <label for="admin-password">Пароль адміністратора</label>
-        <input type="password" id="admin-password" placeholder="Пароль (за замовчуванням: admin)" required>
-      </div>
-      <button type="submit" class="btn-admin" style="width: 100%;">Увійти</button>
-    </form>
-  </div>
-
   <!-- Dashboard Section -->
-  <main id="dashboard-section" class="admin-main hidden">
+  <main id="dashboard-section" class="admin-main">
 
     <div class="admin-grid">
 
@@ -46,6 +33,10 @@
           <div class="form-field">
             <label for="set_branch_name">Назва філії Академії ITSTEP</label>
             <input type="text" id="set_branch_name" placeholder="Наприклад: Ковельська філія" required>
+          </div>
+          <div class="form-field">
+            <label for="set_youtube_url">🎥 Посилання на YouTube відео (для головної сторінки)</label>
+            <input type="url" id="set_youtube_url" placeholder="https://www.youtube.com/watch?v=... або https://youtu.be/...">
           </div>
           <div class="form-field">
             <label for="set_phone">Контактний телефон для звернень</label>
