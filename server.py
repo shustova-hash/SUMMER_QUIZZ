@@ -356,7 +356,8 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 self._send_error('Помилка завантаження файла', 400)
             return
 
-        self._send_error('Route not found', 404)
+handler = QuizRequestHandler
+app = QuizRequestHandler
 
 def run(port=8080):
     server_address = ('', port)
