@@ -5,6 +5,7 @@ let registrationData = null;
 let currentBranchSettings = {};
 
 document.addEventListener('DOMContentLoaded', () => {
+  renderBranchInfo();
   loadBranchSettings();
   setupEventListeners();
 });
@@ -13,11 +14,20 @@ async function loadBranchSettings() {
   try {
     const res = await fetch('/api/settings');
     if (res.ok) {
-      currentBranchSettings = await res.json();
+      const data = await res.json();
+      if (!data.youtube_url && localStorage.getItem('youtube_url')) {
+        data.youtube_url = localStorage.getItem('youtube_url');
+      } else if (data.youtube_url) {
+        localStorage.setItem('youtube_url', data.youtube_url);
+      }
+      currentBranchSettings = data;
+      renderBranchInfo();
+    } else {
       renderBranchInfo();
     }
   } catch (err) {
     console.error("Failed to load settings:", err);
+    renderBranchInfo();
   }
 }
 
