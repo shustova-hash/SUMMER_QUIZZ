@@ -68,13 +68,42 @@ def init_db():
 
 init_db()
 
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
+
+DEFAULT_SETTINGS = {
+    'branch_name': 'Ковельська філія',
+    'youtube_url': '',
+    'phone': '+380 (67) 555-43-21',
+    'email': 'kovel@itstep.org',
+    'address': 'м. Ковель, вул. Незалежності, 1',
+    'telegram': '@itstep_kovel'
+}
+
 def get_settings():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('SELECT key, value FROM settings')
-    rows = c.fetchall()
-    conn.close()
-    return {r[0]: r[1] for r in rows}
+    settings = dict(DEFAULT_SETTINGS)
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                saved = json.load(f)
+                for k, v in saved.items():
+                    if v:
+                        settings[k] = str(v)
+        except Exception as e:
+            print("Error reading settings.json:", e)
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('SELECT key, value FROM settings WHERE value IS NOT NULL AND value != ""')
+        rows = c.fetchall()
+        conn.close()
+        for k, v in rows:
+            if v:
+                settings[k] = v
+    except Exception as e:
+        print("Error reading settings DB:", e)
+
+    return settings
 
 def update_settings(data):
     conn = sqlite3.connect(DB_FILE)
@@ -83,6 +112,14 @@ def update_settings(data):
         c.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (k, str(v)))
     conn.commit()
     conn.close()
+
+    try:
+        current = get_settings()
+        current.update(data)
+        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(current, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print("Error writing settings.json:", e)
 
 def generate_ticket():
     digits = ''.join(random.choices(string.digits, k=6))
