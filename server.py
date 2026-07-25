@@ -112,12 +112,12 @@ def init_db():
     ''')
     
     defaults = {
-        'branch_name': 'Ковельська філія',
-        'youtube_url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        'phone': '+380 (67) 555-43-21',
-        'email': 'kovel@itstep.org',
-        'address': 'м. Ковель, вул. Незалежності, 1',
-        'telegram': '@itstep_kovel'
+        'branch_name': 'Cloud east',
+        'youtube_url': 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share',
+        'phone': '+380 96 23 11 331',
+        'email': 'cloud_east@itstep.org',
+        'address': 'UKRAINE',
+        'telegram': '@StepCloudEast'
     }
     for k, v in defaults.items():
         c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
@@ -131,12 +131,12 @@ init_db()
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
 
 DEFAULT_SETTINGS = {
-    'branch_name': 'Ковельська філія',
-    'youtube_url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    'phone': '+380 (67) 555-43-21',
-    'email': 'kovel@itstep.org',
-    'address': 'м. Ковель, вул. Незалежності, 1',
-    'telegram': '@itstep_kovel'
+    'branch_name': 'Cloud east',
+    'youtube_url': 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share',
+    'phone': '+380 96 23 11 331',
+    'email': 'cloud_east@itstep.org',
+    'address': 'UKRAINE',
+    'telegram': '@StepCloudEast'
 }
 
 def get_settings():
