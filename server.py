@@ -21,6 +21,64 @@ os.makedirs(PUBLIC_DIR, exist_ok=True)
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zVjp5vlB3ojS0uT")
 
+DELETED_LEADS_FILE = os.path.join(os.path.dirname(__file__), 'deleted_leads.json')
+
+def get_deleted_records():
+    if os.path.exists(DELETED_LEADS_FILE):
+        try:
+            with open(DELETED_LEADS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print("Error reading deleted_leads.json:", e)
+    return {'ids': [], 'tickets': []}
+
+def save_deleted_lead_record(lead_id, ticket_number=None):
+    records = get_deleted_records()
+    if 'ids' not in records:
+        records['ids'] = []
+    if 'tickets' not in records:
+        records['tickets'] = []
+
+    if lead_id:
+        try:
+            lid_int = int(lead_id)
+            if lid_int not in records['ids']:
+                records['ids'].append(lid_int)
+        except (ValueError, TypeError):
+            pass
+
+    if ticket_number and ticket_number not in records['tickets']:
+        records['tickets'].append(ticket_number)
+
+    try:
+        with open(DELETED_LEADS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(records, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print("Error saving deleted_leads.json:", e)
+
+    purge_deleted_leads_from_db(records)
+
+def purge_deleted_leads_from_db(records=None):
+    if records is None:
+        records = get_deleted_records()
+    ids = records.get('ids', [])
+    tickets = records.get('tickets', [])
+
+    if not ids and not tickets:
+        return
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        for lid in ids:
+            c.execute('DELETE FROM leads WHERE id = ?', (lid,))
+        for tnum in tickets:
+            c.execute('DELETE FROM leads WHERE ticket_number = ?', (tnum,))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("Error purging deleted leads from DB:", e)
+
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -65,6 +123,8 @@ def init_db():
         c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
     conn.commit()
     conn.close()
+
+    purge_deleted_leads_from_db()
 
 init_db()
 
@@ -315,9 +375,17 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
                 conn = sqlite3.connect(DB_FILE)
                 c = conn.cursor()
+                c.execute('SELECT ticket_number FROM leads WHERE id = ?', (lead_id,))
+                row = c.fetchone()
+                ticket_number = row[0] if row else None
+
                 c.execute('DELETE FROM leads WHERE id = ?', (lead_id,))
+                if ticket_number:
+                    c.execute('DELETE FROM leads WHERE ticket_number = ?', (ticket_number,))
                 conn.commit()
                 conn.close()
+
+                save_deleted_lead_record(lead_id, ticket_number)
 
                 self._send_json({'success': True, 'deleted_id': lead_id})
             except Exception as e:
