@@ -2,7 +2,13 @@ let currentStep = 1;
 let currentQuestionIndex = 0;
 let userAnswers = [];
 let registrationData = null;
-let currentBranchSettings = {};
+let currentBranchSettings = {
+  branch_name: 'Ковельська філія',
+  youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  phone: '+380 (67) 555-43-21',
+  email: 'kovel@itstep.org',
+  address: 'м. Ковель, вул. Незалежності, 1'
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   renderBranchInfo();
