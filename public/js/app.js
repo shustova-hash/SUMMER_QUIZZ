@@ -168,11 +168,11 @@ function setupEventListeners() {
   // Certificate Download Button
   const certBtn = document.getElementById('download-cert-btn');
   if (certBtn) {
-    certBtn.addEventListener('click', () => {
+    certBtn.addEventListener('click', async () => {
       const childName = registrationData ? registrationData.child_name : 'Учасник';
       const branchName = currentBranchSettings.branch_name || 'Філія ITSTEP';
       const ticket = registrationData ? registrationData.ticket_number : 'ITS-000000';
-      generateCertificate(childName, branchName, ticket);
+      await generateCertificate(childName, branchName, ticket);
     });
   }
 
