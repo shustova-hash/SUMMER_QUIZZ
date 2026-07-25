@@ -113,7 +113,7 @@ def init_db():
     
     defaults = {
         'branch_name': 'Ковельська філія',
-        'youtube_url': '',
+        'youtube_url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         'phone': '+380 (67) 555-43-21',
         'email': 'kovel@itstep.org',
         'address': 'м. Ковель, вул. Незалежності, 1',
@@ -132,7 +132,7 @@ SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
 
 DEFAULT_SETTINGS = {
     'branch_name': 'Ковельська філія',
-    'youtube_url': '',
+    'youtube_url': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     'phone': '+380 (67) 555-43-21',
     'email': 'kovel@itstep.org',
     'address': 'м. Ковель, вул. Незалежності, 1',
