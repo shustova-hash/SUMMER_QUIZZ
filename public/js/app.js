@@ -66,7 +66,7 @@ function getYouTubeEmbedUrl(url) {
 function renderBranchInfo() {
   const branchNameEls = document.querySelectorAll('.dynamic-branch-name');
   branchNameEls.forEach(el => {
-    el.textContent = currentBranchSettings.branch_name || 'Ковельська філія';
+    el.textContent = currentBranchSettings.branch_name || ' ';
   });
 
   const phoneEls = document.querySelectorAll('.dynamic-phone');
