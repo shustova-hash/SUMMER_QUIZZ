@@ -423,10 +423,67 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                     'success': True,
                     'lead_id': lead_id,
                     'ticket_number': ticket_number,
-                    'child_name': child_name
+                    'child_name': child_name,
+                    'parent_email': parent_email
                 })
             except Exception as e:
                 self._send_error(f"Помилка реєстрації: {str(e)}", 400)
+            return
+
+        if path == '/api/send-results-email':
+            try:
+                data = json.loads(body.decode('utf-8'))
+                email = data.get('email', '').strip()
+                child_name = data.get('child_name', '').strip()
+                ticket_number = data.get('ticket_number', '').strip()
+                result_profile = data.get('result_profile', '').strip()
+
+                if email:
+                    smtp_host = os.environ.get('SMTP_HOST')
+                    smtp_port = int(os.environ.get('SMTP_PORT', 587))
+                    smtp_user = os.environ.get('SMTP_USER')
+                    smtp_pass = os.environ.get('SMTP_PASSWORD')
+
+                    if smtp_host and smtp_user and smtp_pass:
+                        import smtplib
+                        from email.mime.text import MIMEText
+                        from email.mime.multipart import MIMEMultipart
+
+                        msg = MIMEMultipart()
+                        msg['From'] = smtp_user
+                        msg['To'] = email
+                        msg['Subject'] = f"Сертифікат та IT-гайд для {child_name} | Академія ITSTEP"
+
+                        html_content = f"""
+                        <html>
+                          <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                            <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+                              <h2 style="color: #0284c7;">Академія ITSTEP</h2>
+                              <p>Вітаємо!</p>
+                              <p>Дякуємо за участь у квізі <strong>«Мої літні канікули — це баг чи фіча?»</strong>.</p>
+                              <p>Учасник: <strong>{child_name}</strong><br>
+                              Визначений IT-профіль: <strong>{result_profile}</strong><br>
+                              Унікальний номер учасника розіграшу: <strong>{ticket_number}</strong></p>
+                              <p>Матеріали та сертифікат підготовлені для вас.</p>
+                              <p style="font-size: 0.9em; color: #666;">З повагою,<br>Команда Академії ITSTEP</p>
+                            </div>
+                          </body>
+                        </html>
+                        """
+                        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+                        try:
+                            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+                            server.starttls()
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(smtp_user, [email], msg.as_string())
+                            server.quit()
+                        except Exception as se:
+                            print("SMTP send error:", se)
+
+                self._send_json({'success': True, 'email': email})
+            except Exception as e:
+                self._send_error(str(e), 400)
             return
 
         if path == '/api/update-result':
