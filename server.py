@@ -97,8 +97,6 @@ def send_email_via_api(api_key, sender_email, recipient, subject, html_content):
             },
             method='POST'
         )
-        with urllib.request.urlopen(req, timeout=12) as response:
-            return json.loads(response.read().decode('utf-8'))
     else:
         url = 'https://api.brevo.com/v3/smtp/email'
         payload = {
@@ -117,8 +115,19 @@ def send_email_via_api(api_key, sender_email, recipient, subject, html_content):
             },
             method='POST'
         )
+
+    try:
         with urllib.request.urlopen(req, timeout=12) as response:
             return json.loads(response.read().decode('utf-8'))
+    except urllib.error.HTTPError as he:
+        try:
+            err_json = json.loads(he.read().decode('utf-8'))
+            msg = err_json.get('message') or err_json.get('code') or str(err_json)
+            raise Exception(msg)
+        except Exception as parse_e:
+            if str(parse_e) != str(he):
+                raise Exception(str(parse_e))
+            raise he
 
 def get_deleted_records():
     if os.path.exists(DELETED_LEADS_FILE):
