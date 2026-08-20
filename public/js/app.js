@@ -184,6 +184,18 @@ function setupEventListeners() {
       window.location.href = '/api/files/download?type=parent_guide';
     });
   }
+
+  // Show Manual Downloads fallback button click
+  const manualDownloadBtn = document.getElementById('show-manual-download-btn');
+  if (manualDownloadBtn) {
+    manualDownloadBtn.addEventListener('click', () => {
+      const directDownloadsBox = document.getElementById('direct-downloads-box');
+      if (directDownloadsBox) {
+        directDownloadsBox.classList.remove('hidden');
+      }
+      manualDownloadBtn.style.display = 'none';
+    });
+  }
 }
 
 function showScreen(screenNum) {
@@ -254,6 +266,40 @@ async function finishQuiz() {
     } catch (e) {
       console.error("Error updating result in DB", e);
     }
+  }
+
+  // Check email presence for results delivery
+  const userEmail = (registrationData && registrationData.parent_email) ? registrationData.parent_email.trim() : '';
+  const emailBox = document.getElementById('email-delivery-box');
+  const downloadsBox = document.getElementById('direct-downloads-box');
+
+  if (userEmail) {
+    if (document.getElementById('user-email-display')) {
+      document.getElementById('user-email-display').textContent = userEmail;
+    }
+    if (emailBox) emailBox.classList.remove('hidden');
+    if (downloadsBox) downloadsBox.classList.add('hidden');
+
+    // Trigger email send on backend
+    try {
+      fetch('/api/send-results-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: registrationData ? registrationData.lead_id : null,
+          email: userEmail,
+          child_name: registrationData ? registrationData.child_name : 'Учасник',
+          ticket_number: registrationData ? registrationData.ticket_number : 'ITS-000000',
+          result_profile: profile.badge,
+          branch_name: currentBranchSettings.branch_name || 'Cloud east'
+        })
+      });
+    } catch (e) {
+      console.error("Error sending email:", e);
+    }
+  } else {
+    if (emailBox) emailBox.classList.add('hidden');
+    if (downloadsBox) downloadsBox.classList.remove('hidden');
   }
 
   showScreen(5);
