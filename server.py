@@ -439,10 +439,14 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 result_profile = data.get('result_profile', '').strip()
 
                 if email:
-                    smtp_host = os.environ.get('SMTP_HOST')
-                    smtp_port = int(os.environ.get('SMTP_PORT', 587))
-                    smtp_user = os.environ.get('SMTP_USER')
-                    smtp_pass = os.environ.get('SMTP_PASSWORD')
+                    smtp_host = os.environ.get('SMTP_HOST', '').strip()
+                    smtp_port_raw = str(os.environ.get('SMTP_PORT', '587')).strip()
+                    smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
+                    smtp_user = os.environ.get('SMTP_USER', '').strip()
+                    smtp_pass = os.environ.get('SMTP_PASSWORD', '').strip()
+
+                    email_sent = False
+                    email_error = None
 
                     if smtp_host and smtp_user and smtp_pass:
                         import smtplib
@@ -473,15 +477,27 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                         msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
                         try:
-                            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-                            server.starttls()
+                            if smtp_port == 465:
+                                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
+                            else:
+                                server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
+                                server.starttls()
+
                             server.login(smtp_user, smtp_pass)
                             server.sendmail(smtp_user, [email], msg.as_string())
                             server.quit()
+                            email_sent = True
+                            print(f"SUCCESS: Email sent to {email}")
                         except Exception as se:
+                            email_error = str(se)
                             print("SMTP send error:", se)
 
-                self._send_json({'success': True, 'email': email})
+                self._send_json({
+                    'success': True, 
+                    'email': email, 
+                    'email_sent': email_sent, 
+                    'error': email_error
+                })
             except Exception as e:
                 self._send_error(str(e), 400)
             return
