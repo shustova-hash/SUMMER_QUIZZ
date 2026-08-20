@@ -282,7 +282,7 @@ async function finishQuiz() {
 
     // Trigger email send on backend
     try {
-      fetch('/api/send-results-email', {
+      const res = await fetch('/api/send-results-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -294,8 +294,14 @@ async function finishQuiz() {
           branch_name: currentBranchSettings.branch_name || 'Cloud east'
         })
       });
+      const data = await res.json();
+      if (!data.email_sent) {
+        console.warn("SMTP email dispatch failed:", data.error);
+        if (downloadsBox) downloadsBox.classList.remove('hidden');
+      }
     } catch (e) {
       console.error("Error sending email:", e);
+      if (downloadsBox) downloadsBox.classList.remove('hidden');
     }
   } else {
     if (emailBox) emailBox.classList.add('hidden');
