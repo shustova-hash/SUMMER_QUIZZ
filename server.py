@@ -72,6 +72,54 @@ def send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, recipient, 
     finally:
         socket.getaddrinfo = old_getaddrinfo
 
+def send_email_via_api(api_key, sender_email, recipient, subject, html_content):
+    import urllib.request
+    import json
+
+    api_key = api_key.strip()
+    sender = sender_email.strip() if sender_email else 'cloud_east@itstep.org'
+
+    if api_key.startswith('re_'):
+        url = 'https://api.resend.com/emails'
+        from_addr = sender if ('@' in sender and not sender.endswith('@gmail.com') and not sender.endswith('@ukr.net')) else 'onboarding@resend.dev'
+        payload = {
+            "from": f"Академія ITSTEP <{from_addr}>",
+            "to": [recipient],
+            "subject": subject,
+            "html": html_content
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json'
+            },
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=12) as response:
+            return json.loads(response.read().decode('utf-8'))
+    else:
+        url = 'https://api.brevo.com/v3/smtp/email'
+        payload = {
+            "sender": {"name": "Академія ITSTEP", "email": sender},
+            "to": [{"email": recipient}],
+            "subject": subject,
+            "htmlContent": html_content
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                'accept': 'application/json',
+                'api-key': api_key,
+                'content-type': 'application/json'
+            },
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=12) as response:
+            return json.loads(response.read().decode('utf-8'))
+
 def get_deleted_records():
     if os.path.exists(DELETED_LEADS_FILE):
         try:
@@ -186,6 +234,7 @@ DEFAULT_SETTINGS = {
     'email': 'cloud_east@itstep.org',
     'address': 'UKRAINE',
     'telegram': '@StepCloudEast',
+    'email_api_key': '',
     'smtp_host': '',
     'smtp_port': '587',
     'smtp_user': '',
@@ -493,6 +542,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
                 if email:
                     current_s = get_settings()
+                    email_api_key = (data.get('email_api_key') or os.environ.get('EMAIL_API_KEY') or current_s.get('email_api_key') or '').strip()
                     smtp_host = (os.environ.get('SMTP_HOST') or current_s.get('smtp_host') or '').strip()
                     smtp_port_raw = str(os.environ.get('SMTP_PORT') or current_s.get('smtp_port') or '587').strip()
                     smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
@@ -502,34 +552,42 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                     email_sent = False
                     email_error = None
 
-                    if smtp_host and smtp_user and smtp_pass:
-                        subject = f"Сертифікат та IT-гайд для {child_name} | Академія ITSTEP"
-                        html_content = f"""
-                        <html>
-                          <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                            <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-                              <h2 style="color: #0284c7;">Академія ITSTEP</h2>
-                              <p>Вітаємо!</p>
-                              <p>Дякуємо за участь у квізі <strong>«Мої літні канікули — це баг чи фіча?»</strong>.</p>
-                              <p>Учасник: <strong>{child_name}</strong><br>
-                              Визначений IT-профіль: <strong>{result_profile}</strong><br>
-                              Унікальний номер учасника розіграшу: <strong>{ticket_number}</strong></p>
-                              <p>Матеріали та сертифікат підготовлені для вас.</p>
-                              <p style="font-size: 0.9em; color: #666;">З повагою,<br>Команда Академії ITSTEP</p>
-                            </div>
-                          </body>
-                        </html>
-                        """
+                    subject = f"Сертифікат та IT-гайд для {child_name} | Академія ITSTEP"
+                    html_content = f"""
+                    <html>
+                      <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+                          <h2 style="color: #0284c7;">Академія ITSTEP</h2>
+                          <p>Вітаємо!</p>
+                          <p>Дякуємо за участь у квізі <strong>«Мої літні канікули — це баг чи фіча?»</strong>.</p>
+                          <p>Учасник: <strong>{child_name}</strong><br>
+                          Визначений IT-профіль: <strong>{result_profile}</strong><br>
+                          Унікальний номер учасника розіграшу: <strong>{ticket_number}</strong></p>
+                          <p>Матеріали та сертифікат підготовлені для вас.</p>
+                          <p style="font-size: 0.9em; color: #666;">З повагою,<br>Команда Академії ITSTEP</p>
+                        </div>
+                      </body>
+                    </html>
+                    """
 
+                    if email_api_key:
+                        try:
+                            send_email_via_api(email_api_key, smtp_user, email, subject, html_content)
+                            email_sent = True
+                            print(f"SUCCESS: Email sent via API to {email}")
+                        except Exception as ae:
+                            email_error = f"API Error: {ae}"
+                            print("API Send Error:", ae)
+                    elif smtp_host and smtp_user and smtp_pass:
                         try:
                             send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, email, subject, html_content)
                             email_sent = True
-                            print(f"SUCCESS: Email sent to {email}")
+                            print(f"SUCCESS: Email sent via SMTP to {email}")
                         except Exception as se:
-                            email_error = str(se)
+                            email_error = f"SMTP Error: {se}"
                             print("SMTP send error:", se)
                     else:
-                        email_error = "SMTP credentials not configured (Host, User or Password empty)"
+                        email_error = "Пошта не налаштована (Вкажіть Brevo/Resend API Key або SMTP)"
 
                 self._send_json({
                     'success': True, 
@@ -549,14 +607,15 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(body.decode('utf-8'))
                 current_s = get_settings()
+                email_api_key = (data.get('email_api_key') or os.environ.get('EMAIL_API_KEY') or current_s.get('email_api_key') or '').strip()
                 smtp_host = (data.get('smtp_host') or os.environ.get('SMTP_HOST') or current_s.get('smtp_host') or '').strip()
                 smtp_port_raw = str(data.get('smtp_port') or os.environ.get('SMTP_PORT') or current_s.get('smtp_port') or '587').strip()
                 smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
                 smtp_user = (data.get('smtp_user') or os.environ.get('SMTP_USER') or current_s.get('smtp_user') or '').strip()
                 smtp_pass = (data.get('smtp_pass') or os.environ.get('SMTP_PASSWORD') or current_s.get('smtp_pass') or '').strip()
 
-                if not (smtp_host and smtp_user and smtp_pass):
-                    self._send_json({'success': False, 'error': 'Будь ласка, заповніть SMTP Сервер, Email відправника та Пароль додатку'})
+                if not (email_api_key or (smtp_host and smtp_user and smtp_pass)):
+                    self._send_json({'success': False, 'error': 'Будь ласка, заповніть Brevo/Resend API Key АБО SMTP налаштування в адмінці'})
                     return
 
                 subject = "🧪 Тестовий лист від сайту Академії ITSTEP"
@@ -569,8 +628,13 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 </html>
                 """
 
-                send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, smtp_user, subject, html_content)
-                self._send_json({'success': True, 'email': smtp_user})
+                target_recipient = smtp_user if smtp_user else 'test@example.com'
+                if email_api_key:
+                    send_email_via_api(email_api_key, smtp_user, target_recipient, subject, html_content)
+                else:
+                    send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, target_recipient, subject, html_content)
+
+                self._send_json({'success': True, 'email': target_recipient})
             except Exception as e:
                 self._send_json({'success': False, 'error': str(e)})
             return
