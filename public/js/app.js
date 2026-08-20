@@ -280,6 +280,20 @@ async function finishQuiz() {
     if (emailBox) emailBox.classList.remove('hidden');
     if (downloadsBox) downloadsBox.classList.add('hidden');
 
+    // Generate certificate Base64 image
+    let certBase64 = null;
+    try {
+      if (typeof getCertificateBase64 === 'function') {
+        certBase64 = await getCertificateBase64(
+          registrationData ? registrationData.child_name : 'Учасник',
+          currentBranchSettings.branch_name || 'Cloud east',
+          registrationData ? registrationData.ticket_number : 'ITS-000000'
+        );
+      }
+    } catch (err) {
+      console.error("Error generating cert base64:", err);
+    }
+
     // Trigger email send on backend
     try {
       const res = await fetch('/api/send-results-email', {
@@ -291,12 +305,13 @@ async function finishQuiz() {
           child_name: registrationData ? registrationData.child_name : 'Учасник',
           ticket_number: registrationData ? registrationData.ticket_number : 'ITS-000000',
           result_profile: profile.badge,
-          branch_name: currentBranchSettings.branch_name || 'Cloud east'
+          branch_name: currentBranchSettings.branch_name || 'Cloud east',
+          cert_base64: certBase64
         })
       });
       const data = await res.json();
       if (!data.email_sent) {
-        console.warn("SMTP email dispatch failed:", data.error);
+        console.warn("Email dispatch notice:", data.error);
         if (downloadsBox) downloadsBox.classList.remove('hidden');
       }
     } catch (e) {
