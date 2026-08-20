@@ -136,7 +136,11 @@ DEFAULT_SETTINGS = {
     'phone': '+380 96 23 11 331',
     'email': 'cloud_east@itstep.org',
     'address': 'UKRAINE',
-    'telegram': '@StepCloudEast'
+    'telegram': '@StepCloudEast',
+    'smtp_host': '',
+    'smtp_port': '587',
+    'smtp_user': '',
+    'smtp_pass': ''
 }
 
 def get_settings():
@@ -439,11 +443,12 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 result_profile = data.get('result_profile', '').strip()
 
                 if email:
-                    smtp_host = os.environ.get('SMTP_HOST', '').strip()
-                    smtp_port_raw = str(os.environ.get('SMTP_PORT', '587')).strip()
+                    current_s = get_settings()
+                    smtp_host = (os.environ.get('SMTP_HOST') or current_s.get('smtp_host') or '').strip()
+                    smtp_port_raw = str(os.environ.get('SMTP_PORT') or current_s.get('smtp_port') or '587').strip()
                     smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
-                    smtp_user = os.environ.get('SMTP_USER', '').strip()
-                    smtp_pass = os.environ.get('SMTP_PASSWORD', '').strip()
+                    smtp_user = (os.environ.get('SMTP_USER') or current_s.get('smtp_user') or '').strip()
+                    smtp_pass = (os.environ.get('SMTP_PASSWORD') or current_s.get('smtp_pass') or '').strip()
 
                     email_sent = False
                     email_error = None
@@ -491,6 +496,8 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                         except Exception as se:
                             email_error = str(se)
                             print("SMTP send error:", se)
+                    else:
+                        email_error = "SMTP credentials not configured (Host, User or Password empty)"
 
                 self._send_json({
                     'success': True, 
@@ -500,6 +507,58 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 })
             except Exception as e:
                 self._send_error(str(e), 400)
+            return
+
+        if path == '/api/admin/test-email':
+            auth_header = self.headers.get('Authorization', '')
+            if auth_header != f'Bearer {ADMIN_PASSWORD}':
+                self._send_error('Unauthorized', 401)
+                return
+            try:
+                data = json.loads(body.decode('utf-8'))
+                current_s = get_settings()
+                smtp_host = (data.get('smtp_host') or os.environ.get('SMTP_HOST') or current_s.get('smtp_host') or '').strip()
+                smtp_port_raw = str(data.get('smtp_port') or os.environ.get('SMTP_PORT') or current_s.get('smtp_port') or '587').strip()
+                smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
+                smtp_user = (data.get('smtp_user') or os.environ.get('SMTP_USER') or current_s.get('smtp_user') or '').strip()
+                smtp_pass = (data.get('smtp_pass') or os.environ.get('SMTP_PASSWORD') or current_s.get('smtp_pass') or '').strip()
+
+                if not (smtp_host and smtp_user and smtp_pass):
+                    self._send_json({'success': False, 'error': 'Будь ласка, заповніть SMTP Сервер, Email відправника та Пароль додатку'})
+                    return
+
+                import smtplib
+                from email.mime.text import MIMEText
+                from email.mime.multipart import MIMEMultipart
+
+                msg = MIMEMultipart()
+                msg['From'] = smtp_user
+                msg['To'] = smtp_user
+                msg['Subject'] = "🧪 Тестовий лист від сайту Академії ITSTEP"
+
+                html_content = """
+                <html>
+                  <body style="font-family: Arial, sans-serif; color: #333;">
+                    <h3 style="color: #0284c7;">Вітаємо! Налаштування пошти працюють ідеально! ✅</h3>
+                    <p>Цей тестовий лист підтверджує, що ваш поштовий сервер успішно підключено та відправка функціонує бездоганно.</p>
+                  </body>
+                </html>
+                """
+                msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+                if smtp_port == 465:
+                    server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
+                else:
+                    server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
+                    server.starttls()
+
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_user, [smtp_user], msg.as_string())
+                server.quit()
+
+                self._send_json({'success': True, 'email': smtp_user})
+            except Exception as e:
+                self._send_json({'success': False, 'error': str(e)})
             return
 
         if path == '/api/update-result':
