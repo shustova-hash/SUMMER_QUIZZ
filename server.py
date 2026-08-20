@@ -23,6 +23,37 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zVjp5vlB3ojS0uT")
 
 DELETED_LEADS_FILE = os.path.join(os.path.dirname(__file__), 'deleted_leads.json')
 
+def send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, recipient, subject, html_content):
+    import socket
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    msg = MIMEMultipart()
+    msg['From'] = smtp_user
+    msg['To'] = recipient
+    msg['Subject'] = subject
+    msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+    old_getaddrinfo = socket.getaddrinfo
+
+    def ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        return old_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+
+    socket.getaddrinfo = ipv4_getaddrinfo
+    try:
+        if smtp_port == 465:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
+        else:
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
+            server.starttls()
+
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(smtp_user, [recipient], msg.as_string())
+        server.quit()
+    finally:
+        socket.getaddrinfo = old_getaddrinfo
+
 def get_deleted_records():
     if os.path.exists(DELETED_LEADS_FILE):
         try:
@@ -454,15 +485,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                     email_error = None
 
                     if smtp_host and smtp_user and smtp_pass:
-                        import smtplib
-                        from email.mime.text import MIMEText
-                        from email.mime.multipart import MIMEMultipart
-
-                        msg = MIMEMultipart()
-                        msg['From'] = smtp_user
-                        msg['To'] = email
-                        msg['Subject'] = f"Сертифікат та IT-гайд для {child_name} | Академія ITSTEP"
-
+                        subject = f"Сертифікат та IT-гайд для {child_name} | Академія ITSTEP"
                         html_content = f"""
                         <html>
                           <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -479,18 +502,9 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                           </body>
                         </html>
                         """
-                        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
                         try:
-                            if smtp_port == 465:
-                                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
-                            else:
-                                server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
-                                server.starttls()
-
-                            server.login(smtp_user, smtp_pass)
-                            server.sendmail(smtp_user, [email], msg.as_string())
-                            server.quit()
+                            send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, email, subject, html_content)
                             email_sent = True
                             print(f"SUCCESS: Email sent to {email}")
                         except Exception as se:
@@ -527,15 +541,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                     self._send_json({'success': False, 'error': 'Будь ласка, заповніть SMTP Сервер, Email відправника та Пароль додатку'})
                     return
 
-                import smtplib
-                from email.mime.text import MIMEText
-                from email.mime.multipart import MIMEMultipart
-
-                msg = MIMEMultipart()
-                msg['From'] = smtp_user
-                msg['To'] = smtp_user
-                msg['Subject'] = "🧪 Тестовий лист від сайту Академії ITSTEP"
-
+                subject = "🧪 Тестовий лист від сайту Академії ITSTEP"
                 html_content = """
                 <html>
                   <body style="font-family: Arial, sans-serif; color: #333;">
@@ -544,18 +550,8 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                   </body>
                 </html>
                 """
-                msg.attach(MIMEText(html_content, 'html', 'utf-8'))
 
-                if smtp_port == 465:
-                    server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
-                else:
-                    server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
-                    server.starttls()
-
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_user, [smtp_user], msg.as_string())
-                server.quit()
-
+                send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, smtp_user, subject, html_content)
                 self._send_json({'success': True, 'email': smtp_user})
             except Exception as e:
                 self._send_json({'success': False, 'error': str(e)})
