@@ -160,16 +160,34 @@ def send_email_via_api(api_key, sender_email, recipient, subject, html_content, 
             raise he
 
 def get_guide_pdf_base64():
-    guide_path = os.path.join(PUBLIC_DIR, 'uploads', 'parent_guide.pdf')
-    if not os.path.exists(guide_path):
-        guide_path = os.path.join(PUBLIC_DIR, 'assets', 'default_guide.pdf')
-    if os.path.exists(guide_path):
-        try:
-            with open(guide_path, 'rb') as f:
-                import base64
-                return base64.b64encode(f.read()).decode('utf-8')
-        except Exception as e:
-            print("Error reading guide PDF for email attachment:", e)
+    import base64
+    # 1. Check if custom parent_guide was uploaded via Admin Panel
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('SELECT filename FROM files WHERE file_type = ?', ('parent_guide',))
+        row = c.fetchone()
+        conn.close()
+        if row and row[0]:
+            uploaded_path = os.path.join(UPLOADS_DIR, row[0])
+            if os.path.exists(uploaded_path):
+                with open(uploaded_path, 'rb') as f:
+                    return base64.b64encode(f.read()).decode('utf-8')
+    except Exception as e:
+        print("Error checking files DB for guide:", e)
+
+    # 2. Check fallback file locations
+    possible_paths = [
+        os.path.join(UPLOADS_DIR, 'parent_guide.pdf'),
+        os.path.join(PUBLIC_DIR, 'assets', 'default_guide.pdf')
+    ]
+    for p in possible_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, 'rb') as f:
+                    return base64.b64encode(f.read()).decode('utf-8')
+            except Exception as e:
+                print("Error reading guide PDF:", e)
     return None
 
 def get_deleted_records():
