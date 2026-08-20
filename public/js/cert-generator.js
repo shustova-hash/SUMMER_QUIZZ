@@ -8,7 +8,7 @@ function loadImage(src) {
     });
 }
 
-async function generateCertificate(childName, branchName, ticketNumber) {
+async function buildCertificateCanvas(childName, branchName, ticketNumber) {
     const canvas = document.createElement('canvas');
     canvas.width = 1600;
     canvas.height = 1131; // A4 aspect ratio in pixels
@@ -153,7 +153,17 @@ async function generateCertificate(childName, branchName, ticketNumber) {
     ctx.textAlign = 'right';
     ctx.fillText('Академія ITSTEP © 2026', 1480, 990);
 
-    // Trigger download
+    return canvas;
+}
+
+async function getCertificateBase64(childName, branchName, ticketNumber) {
+    const canvas = await buildCertificateCanvas(childName, branchName, ticketNumber);
+    const dataUrl = canvas.toDataURL('image/png');
+    return dataUrl.split(',')[1] || dataUrl;
+}
+
+async function generateCertificate(childName, branchName, ticketNumber) {
+    const canvas = await buildCertificateCanvas(childName, branchName, ticketNumber);
     const link = document.createElement('a');
     link.download = `Certificate_${(childName || 'Participant').replace(/\s+/g, '_')}_ITSTEP.png`;
     link.href = canvas.toDataURL('image/png');
