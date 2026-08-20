@@ -23,7 +23,11 @@ function setupAdminEvents() {
         phone: document.getElementById('set_phone').value,
         email: document.getElementById('set_email').value,
         address: document.getElementById('set_address').value,
-        telegram: document.getElementById('set_telegram').value
+        telegram: document.getElementById('set_telegram').value,
+        smtp_host: document.getElementById('set_smtp_host').value,
+        smtp_port: document.getElementById('set_smtp_port').value,
+        smtp_user: document.getElementById('set_smtp_user').value,
+        smtp_pass: document.getElementById('set_smtp_pass').value
       };
 
       if (payload.youtube_url) {
@@ -40,12 +44,46 @@ function setupAdminEvents() {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          alert('Налаштування філії успішно збережено!');
+          alert('Налаштування філії та пошти успішно збережено!');
         } else {
           alert('Збережено локально. (Увага: сервер повернув помилку або не підключений)');
         }
       } catch (err) {
         alert('Збережено локально!');
+      }
+    });
+  }
+
+  const testSmtpBtn = document.getElementById('test-smtp-btn');
+  if (testSmtpBtn) {
+    testSmtpBtn.addEventListener('click', async () => {
+      testSmtpBtn.disabled = true;
+      testSmtpBtn.textContent = '⏳ Перевірка...';
+      try {
+        const res = await fetch('/api/admin/test-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({
+            smtp_host: document.getElementById('set_smtp_host').value,
+            smtp_port: document.getElementById('set_smtp_port').value,
+            smtp_user: document.getElementById('set_smtp_user').value,
+            smtp_pass: document.getElementById('set_smtp_pass').value
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(`✅ УСПІХ! Тестовий лист успішно надіслано на ${data.email}!\nПеревірте скриньку вхідних.`);
+        } else {
+          alert(`❌ ПОМИЛКА ВІДПРАВКИ ПОШТИ:\n${data.error || 'Невідома помилка підключення'}`);
+        }
+      } catch (err) {
+        alert(`❌ Помилка з'єднання із сервером: ${err.message}`);
+      } finally {
+        testSmtpBtn.disabled = false;
+        testSmtpBtn.textContent = '🧪 Протестувати пошту';
       }
     });
   }
@@ -152,6 +190,10 @@ async function loadSettings() {
       document.getElementById('set_email').value = data.email || '';
       document.getElementById('set_address').value = data.address || '';
       document.getElementById('set_telegram').value = data.telegram || '';
+      document.getElementById('set_smtp_host').value = data.smtp_host || '';
+      document.getElementById('set_smtp_port').value = data.smtp_port || '';
+      document.getElementById('set_smtp_user').value = data.smtp_user || '';
+      document.getElementById('set_smtp_pass').value = data.smtp_pass || '';
     }
   } catch (err) {
     console.error(err);
