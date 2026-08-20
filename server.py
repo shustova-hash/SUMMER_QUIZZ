@@ -41,16 +41,34 @@ def send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, recipient, 
         return old_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
 
     socket.getaddrinfo = ipv4_getaddrinfo
-    try:
-        if smtp_port == 465:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
-        else:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
-            server.starttls()
 
-        server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_user, [recipient], msg.as_string())
-        server.quit()
+    port_num = int(smtp_port) if str(smtp_port).strip().isdigit() else 587
+    ports_to_try = [port_num]
+    if port_num == 465 and 587 not in ports_to_try:
+        ports_to_try.append(587)
+    elif port_num == 587 and 465 not in ports_to_try:
+        ports_to_try.append(465)
+
+    last_error = None
+    try:
+        for p in ports_to_try:
+            try:
+                if p == 465:
+                    server = smtplib.SMTP_SSL(smtp_host, p, timeout=10)
+                else:
+                    server = smtplib.SMTP(smtp_host, p, timeout=10)
+                    server.starttls()
+
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_user, [recipient], msg.as_string())
+                server.quit()
+                return
+            except Exception as err:
+                last_error = err
+                continue
+
+        if last_error:
+            raise last_error
     finally:
         socket.getaddrinfo = old_getaddrinfo
 
