@@ -24,6 +24,7 @@ function setupAdminEvents() {
         email: document.getElementById('set_email').value,
         address: document.getElementById('set_address').value,
         telegram: document.getElementById('set_telegram').value,
+        email_api_key: document.getElementById('set_email_api_key').value,
         smtp_host: document.getElementById('set_smtp_host').value,
         smtp_port: document.getElementById('set_smtp_port').value,
         smtp_user: document.getElementById('set_smtp_user').value,
@@ -67,6 +68,7 @@ function setupAdminEvents() {
             'Authorization': `Bearer ${adminToken}`
           },
           body: JSON.stringify({
+            email_api_key: document.getElementById('set_email_api_key').value,
             smtp_host: document.getElementById('set_smtp_host').value,
             smtp_port: document.getElementById('set_smtp_port').value,
             smtp_user: document.getElementById('set_smtp_user').value,
@@ -190,6 +192,7 @@ async function loadSettings() {
       document.getElementById('set_email').value = data.email || '';
       document.getElementById('set_address').value = data.address || '';
       document.getElementById('set_telegram').value = data.telegram || '';
+      document.getElementById('set_email_api_key').value = data.email_api_key || '';
       document.getElementById('set_smtp_host').value = data.smtp_host || '';
       document.getElementById('set_smtp_port').value = data.smtp_port || '';
       document.getElementById('set_smtp_user').value = data.smtp_user || '';
