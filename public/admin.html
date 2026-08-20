@@ -55,7 +55,14 @@
             <input type="text" id="set_telegram" placeholder="@itstep_kovel">
           </div>
 
-          <h4 style="color: #38bdf8; font-size: 0.95rem; margin: 20px 0 10px; border-top: 1px solid #334155; padding-top: 15px;">📧 Налаштування Відправки Пошти (SMTP)</h4>
+          <h4 style="color: #38bdf8; font-size: 0.95rem; margin: 20px 0 10px; border-top: 1px solid #334155; padding-top: 15px;">📧 Налаштування Відправки Пошти (Brevo / Resend / SMTP)</h4>
+          <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px;">
+            Для гарантованої відправки з Render без блокувань рекомендовано використати <strong>Brevo API Key</strong> (безкоштовно 300 листів/день) або <strong>Resend API Key</strong> (3000 листів/міс).
+          </p>
+          <div class="form-field">
+            <label for="set_email_api_key">🔑 Brevo / Resend API Key (для HTTPS-відправки на Render)</label>
+            <input type="password" id="set_email_api_key" placeholder="xkeysib-... або re_...">
+          </div>
           <div class="form-field">
             <label for="set_smtp_host">SMTP Сервер (наприклад: smtp.gmail.com або smtp.ukr.net)</label>
             <input type="text" id="set_smtp_host" placeholder="smtp.gmail.com">
