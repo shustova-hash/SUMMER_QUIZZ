@@ -23,17 +23,35 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zVjp5vlB3ojS0uT")
 
 DELETED_LEADS_FILE = os.path.join(os.path.dirname(__file__), 'deleted_leads.json')
 
-def send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, recipient, subject, html_content):
+def send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, recipient, subject, html_content, attachments=None):
     import socket
     import smtplib
+    import base64
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    from email.mime.base import MIMEBase
+    from email import encoders
 
     msg = MIMEMultipart()
     msg['From'] = smtp_user
     msg['To'] = recipient
     msg['Subject'] = subject
     msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+    if attachments:
+        for att in attachments:
+            name = att.get('name') or 'file'
+            b64_content = att.get('content')
+            if b64_content:
+                try:
+                    raw_bytes = base64.b64decode(b64_content)
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(raw_bytes)
+                    encoders.encode_base64(part)
+                    part.add_header('Content-Disposition', f'attachment; filename="{name}"')
+                    msg.attach(part)
+                except Exception as ex:
+                    print("Error attaching file to SMTP:", ex)
 
     old_getaddrinfo = socket.getaddrinfo
 
@@ -72,7 +90,7 @@ def send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, recipient, 
     finally:
         socket.getaddrinfo = old_getaddrinfo
 
-def send_email_via_api(api_key, sender_email, recipient, subject, html_content):
+def send_email_via_api(api_key, sender_email, recipient, subject, html_content, attachments=None):
     import urllib.request
     import json
 
@@ -88,6 +106,12 @@ def send_email_via_api(api_key, sender_email, recipient, subject, html_content):
             "subject": subject,
             "html": html_content
         }
+        if attachments:
+            payload["attachments"] = [
+                {"filename": att["name"], "content": att["content"]}
+                for att in attachments if att.get("content")
+            ]
+
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode('utf-8'),
@@ -105,6 +129,12 @@ def send_email_via_api(api_key, sender_email, recipient, subject, html_content):
             "subject": subject,
             "htmlContent": html_content
         }
+        if attachments:
+            payload["attachment"] = [
+                {"name": att["name"], "content": att["content"]}
+                for att in attachments if att.get("content")
+            ]
+
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode('utf-8'),
@@ -128,6 +158,19 @@ def send_email_via_api(api_key, sender_email, recipient, subject, html_content):
             if str(parse_e) != str(he):
                 raise Exception(str(parse_e))
             raise he
+
+def get_guide_pdf_base64():
+    guide_path = os.path.join(PUBLIC_DIR, 'uploads', 'parent_guide.pdf')
+    if not os.path.exists(guide_path):
+        guide_path = os.path.join(PUBLIC_DIR, 'assets', 'default_guide.pdf')
+    if os.path.exists(guide_path):
+        try:
+            with open(guide_path, 'rb') as f:
+                import base64
+                return base64.b64encode(f.read()).decode('utf-8')
+        except Exception as e:
+            print("Error reading guide PDF for email attachment:", e)
+    return None
 
 def get_deleted_records():
     if os.path.exists(DELETED_LEADS_FILE):
@@ -561,6 +604,21 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                     email_sent = False
                     email_error = None
 
+                    cert_b64 = data.get('cert_base64')
+                    guide_b64 = get_guide_pdf_base64()
+
+                    attachments = []
+                    if cert_b64:
+                        attachments.append({
+                            "name": f"Certificate_{(child_name or 'Participant').replace(' ', '_')}.png",
+                            "content": cert_b64
+                        })
+                    if guide_b64:
+                        attachments.append({
+                            "name": "IT_Guide_For_Parents.pdf",
+                            "content": guide_b64
+                        })
+
                     subject = f"Сертифікат та IT-гайд для {child_name} | Академія ITSTEP"
                     html_content = f"""
                     <html>
@@ -572,8 +630,10 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                           <p>Учасник: <strong>{child_name}</strong><br>
                           Визначений IT-профіль: <strong>{result_profile}</strong><br>
                           Унікальний номер учасника розіграшу: <strong>{ticket_number}</strong></p>
-                          <p>Матеріали та сертифікат підготовлені для вас.</p>
-                          <p style="font-size: 0.9em; color: #666;">З повагою,<br>Команда Академії ITSTEP</p>
+                          <p>📎 <strong>Ваші вкладені матеріали:</strong><br>
+                          1. Офіційний персональний сертифікат учасника (PNG)<br>
+                          2. IT-гайд для батьків (PDF)</p>
+                          <p style="font-size: 0.9em; color: #666; margin-top: 20px;">З повагою,<br>Команда Академії ITSTEP</p>
                         </div>
                       </body>
                     </html>
@@ -581,17 +641,17 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
                     if email_api_key:
                         try:
-                            send_email_via_api(email_api_key, smtp_user, email, subject, html_content)
+                            send_email_via_api(email_api_key, smtp_user, email, subject, html_content, attachments=attachments)
                             email_sent = True
-                            print(f"SUCCESS: Email sent via API to {email}")
+                            print(f"SUCCESS: Email sent via API to {email} with {len(attachments)} attachments")
                         except Exception as ae:
                             email_error = f"API Error: {ae}"
                             print("API Send Error:", ae)
                     elif smtp_host and smtp_user and smtp_pass:
                         try:
-                            send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, email, subject, html_content)
+                            send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, email, subject, html_content, attachments=attachments)
                             email_sent = True
-                            print(f"SUCCESS: Email sent via SMTP to {email}")
+                            print(f"SUCCESS: Email sent via SMTP to {email} with {len(attachments)} attachments")
                         except Exception as se:
                             email_error = f"SMTP Error: {se}"
                             print("SMTP send error:", se)
